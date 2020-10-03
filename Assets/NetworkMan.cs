@@ -5,16 +5,21 @@ using System;
 using System.Text;
 using System.Net.Sockets;
 using System.Net;
+using System.Data;
 
 public class NetworkMan : MonoBehaviour
 {
     public UdpClient udp;
+    public GameObject[] CubeSpawn;
+    public GameObject player;
     // Start is called before the first frame update
     void Start()
     {
+        //GameObject.CreatePrimitive(PrimitiveType.Cube);
+
         udp = new UdpClient();
         
-        udp.Connect("PUT_IP_ADDRESS_HERE",12345);
+        udp.Connect("18.222.83.238", 12345);
 
         Byte[] sendBytes = Encoding.ASCII.GetBytes("connect");
       
@@ -32,7 +37,8 @@ public class NetworkMan : MonoBehaviour
 
     public enum commands{
         NEW_CLIENT,
-        UPDATE
+        UPDATE,
+        CALLPLAYER
     };
     
     [Serializable]
@@ -62,6 +68,14 @@ public class NetworkMan : MonoBehaviour
         public Player[] players;
     }
 
+    [Serializable]
+    public class Playeradd
+    {
+        public Player player;
+    }
+
+    public GameState OtherPlayers;
+    public Playeradd FirstPlayer;
     public Message latestMessage;
     public GameState lastestGameState;
     void OnReceived(IAsyncResult result){
@@ -82,9 +96,15 @@ public class NetworkMan : MonoBehaviour
         try{
             switch(latestMessage.cmd){
                 case commands.NEW_CLIENT:
+                    FirstPlayer = JsonUtility.FromJson<Playeradd>(returnData);
+                    Debug.Log(FirstPlayer.player.id);
+                    Debug.Log("Laji");
                     break;
                 case commands.UPDATE:
                     lastestGameState = JsonUtility.FromJson<GameState>(returnData);
+                    break;
+                case commands.CALLPLAYER:
+                    OtherPlayers = JsonUtility.FromJson<GameState>(returnData);
                     break;
                 default:
                     Debug.Log("Error");
@@ -101,13 +121,47 @@ public class NetworkMan : MonoBehaviour
 
     void SpawnPlayers(){
 
+        if (FirstPlayer.player.id.Length > 0)
+        {
+            foreach (GameObject cube in GameObject.FindGameObjectsWithTag("Player"))
+            {
+                if (cube.GetComponent<PlayID>().AddrID == FirstPlayer.player.id)
+                {
+                    return;
+                }
+            }
+
+            int PlayerSpawn = UnityEngine.Random.Range(0, 5);
+            GameObject CubeObj;
+            CubeObj = Instantiate(player, CubeSpawn[PlayerSpawn].transform.position, Quaternion.identity);
+            CubeObj.GetComponent<PlayID>().AddrID = FirstPlayer.player.id;
+        }
+        foreach (Player P in OtherPlayers.players)
+        {
+            foreach(GameObject cube in GameObject.FindGameObjectsWithTag("Player"))
+            {
+                if(cube.GetComponent<PlayID>().AddrID == P.id)
+                {
+                    return;
+                }
+            }
+           
+            int PlayerSpawn = UnityEngine.Random.Range(0, 5);
+            GameObject CubeObj;
+            CubeObj = Instantiate(player, CubeSpawn[PlayerSpawn].transform.position, Quaternion.identity);
+            CubeObj.GetComponent<PlayID>().AddrID = P.id;
+        }
+
     }
 
     void UpdatePlayers(){
+        
+        
 
-    }
+    }//RGB
 
     void DestroyPlayers(){
+
 
     }
     
